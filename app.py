@@ -1,6 +1,6 @@
 from typing import Optional
 
-from sqlmodel import Field, Session, SQLModel, create_engine
+from sqlmodel import Field, Session, SQLModel, create_engine, select
 
 # This class Hero represents the table for our heroes. And each instance we create later will represent a row in the table.
 # the config table=True tells SQLModel that this is a table model, aka it represents a table.
@@ -21,6 +21,10 @@ engine = create_engine(sqlite_url, echo=True)
 # You should normally have a single engine object for your whole application and re-use it everywhere. 
 # echo=True will make the engine print all the SQL statements it executes, which can help you understand what's happening. It is particularly useful for learning and debugging but in production, you would probably want to remove it.
 
+
+def create_db_and_tables():
+    SQLModel.metadata.create_all(engine)
+    # If this was not in a function and we tried to import something from this module (from this file) in another, it would try to create the database and table every time we executed that other file that imported this module.
 
 def create_heroes():
     hero_1 = Hero(name="Deadpond", secret_name="Dive Wilson")
@@ -80,13 +84,22 @@ def create_heroes():
     print("Hero 2:", hero_2)
     print("Hero 3:", hero_3)    
 
-def create_db_and_tables():
-    SQLModel.metadata.create_all(engine)
-    # If this was not in a function and we tried to import something from this module (from this file) in another, it would try to create the database and table every time we executed that other file that imported this module.
-
+def select_heros():
+    # We pass the class model Hero to the select() function. And that tells it that we want to select all the columns necessary for the Hero class. And notice that in the select() function we don't explicitly specify the FROM like in SQL. It is already obvious to SQLModel (actually to SQLAlchemy) that we want to select FROM the table hero, because that's the one associated with the Hero class model.
+    with Session(engine) as session:
+        # Your editor will give you autocompletion for both SQLModel's session.exec() and SQLAlchemy's session.execute(). Remember to always use session.exec() to get the best editor support and developer experience.
+        heroes = session.exec(select(Hero)).all()
+        print(heroes)
+        # # Below is before making it more efficient, see above. 
+        # statement = select(Hero)
+        # results = session.exec(statement)
+        # for hero in results:
+        #     print(hero)
+        
 def main():
     create_db_and_tables()
     create_heroes()
+    select_heros()
 
 if __name__ == "__main__":
     main()
