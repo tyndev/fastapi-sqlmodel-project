@@ -1,6 +1,6 @@
 from typing import Optional
 
-from sqlmodel import Field, Session, SQLModel, create_engine, select
+from sqlmodel import Field, Session, SQLModel, col, create_engine, select
 
 # This class Hero represents the table for our heroes. And each instance we create later will represent a row in the table.
 # the config table=True tells SQLModel that this is a table model, aka it represents a table.
@@ -30,6 +30,10 @@ def create_heroes():
     hero_1 = Hero(name="Deadpond", secret_name="Dive Wilson")
     hero_2 = Hero(name="Spider-Boy", secret_name="Pedro Parqueador")
     hero_3 = Hero(name="Rusty-Man", secret_name="Tommy Sharp", age=48)
+    hero_4 = Hero(name="Tarantula", secret_name="Natalia Roman-on", age=32)
+    hero_5 = Hero(name="Black Lion", secret_name="Trevor Challa", age=35)
+    hero_6 = Hero(name="Dr. Weird", secret_name="Steve Weird", age=36)
+    hero_7 = Hero(name="Captain North America", secret_name="Esteban Rogelios", age=93)
     
     print("Before interacting with the database")
     print("Hero 1:", hero_1)
@@ -43,7 +47,11 @@ def create_heroes():
         session.add(hero_1)
         session.add(hero_2)
         session.add(hero_3)
-        
+        session.add(hero_4)
+        session.add(hero_5)
+        session.add(hero_6)
+        session.add(hero_7)
+                
         print("After adding to the session")
         print("Hero 1:", hero_1) # 
         print("Hero 2:", hero_2)
@@ -88,13 +96,16 @@ def select_heros():
     # We pass the class model Hero to the select() function. And that tells it that we want to select all the columns necessary for the Hero class. And notice that in the select() function we don't explicitly specify the FROM like in SQL. It is already obvious to SQLModel (actually to SQLAlchemy) that we want to select FROM the table hero, because that's the one associated with the Hero class model.
     with Session(engine) as session:
         # Your editor will give you autocompletion for both SQLModel's session.exec() and SQLAlchemy's session.execute(). Remember to always use session.exec() to get the best editor support and developer experience.
-        heroes = session.exec(select(Hero)).all()
+        heroes = session.exec(select(Hero).where(col(Hero.age) >= 35, col(Hero.age) < 40)).all()
         print(heroes)
-        # # Below is before making it more efficient, see above. 
-        # statement = select(Hero)
-        # results = session.exec(statement)
-        # for hero in results:
-        #     print(hero)
+        # hero = Hero(name="Deadpond", secret_name="Dive Wilson")
+        # Above, the model class is Hero (capital H) and the instance is hero (lowercase h).
+        # So now you have Hero.name and hero.name that look very similar, but are two different things:
+        # >>> Hero.name == "Deadpond"
+        # <sqlalchemy.sql.elements.BinaryExpression object at 0x7f4aec0d6c90>
+        # >>> hero.name == "Deadpond"
+        # True or False
+        # Without col() above, you get a type error b/c Hero.age is potentially None, and you cannot compare None with an operqator like `>=`. This is because as we are using pure and plain Python annotations for the fields, age is indeed annotated as Optional[int], which means int or None. To fix this we can tell the editor that this class attribute is actually a special SQLModel column (instead of an instance attribute with a normal value).
         
 def main():
     create_db_and_tables()
