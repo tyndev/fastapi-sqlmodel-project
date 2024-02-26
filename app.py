@@ -1,6 +1,6 @@
 from typing import Optional
 
-from sqlmodel import Field, SQLModel, create_engine
+from sqlmodel import Field, Session, SQLModel, create_engine
 
 # This class Hero represents the table for our heroes. And each instance we create later will represent a row in the table.
 # the config table=True tells SQLModel that this is a table model, aka it represents a table.
@@ -21,9 +21,72 @@ engine = create_engine(sqlite_url, echo=True)
 # You should normally have a single engine object for your whole application and re-use it everywhere. 
 # echo=True will make the engine print all the SQL statements it executes, which can help you understand what's happening. It is particularly useful for learning and debugging but in production, you would probably want to remove it.
 
+
+def create_heroes():
+    hero_1 = Hero(name="Deadpond", secret_name="Dive Wilson")
+    hero_2 = Hero(name="Spider-Boy", secret_name="Pedro Parqueador")
+    hero_3 = Hero(name="Rusty-Man", secret_name="Tommy Sharp", age=48)
+    
+    print("Before interacting with the database")
+    print("Hero 1:", hero_1)
+    print("Hero 2:", hero_2)
+    print("Hero 3:", hero_3)
+    
+    # The session will create a new transaction and execute all the SQL code in that transaction. This ensures that the data is saved in a single batch, and that it will all succeed or all fail, but it won't leave the database in a broken state. It's good to know how the Session works and how to create and close it manually. It might be useful if, for example, you want to explore the code in an interactive session (for example with Jupyter). But there's a better way to handle the session, using a `with` block.
+    # session = Session(engine)
+    with Session(engine) as session:
+        # This works similarly to Git where `add` stages the changes and `commit` saves them to the database.
+        session.add(hero_1)
+        session.add(hero_2)
+        session.add(hero_3)
+        
+        print("After adding to the session")
+        print("Hero 1:", hero_1) # 
+        print("Hero 2:", hero_2)
+        print("Hero 3:", hero_3)
+        
+        session.commit()
+        
+        # After committing, the objects are expired and have no values
+        print("After committing the session")
+        print("Hero 1:", hero_1) # returns nothing
+        print("Hero 2:", hero_2) # returns nothing
+        print("Hero 3:", hero_3) # returns nothing
+
+        # But when accessing the attribute after committing, SQLAlchemy will automatically fetch the data from the database and update the object.
+        print("After committing the session, show IDs")
+        print("Hero 1 ID:", hero_1.id)
+        print("Hero 2 ID:", hero_2.id)
+        print("Hero 3 ID:", hero_3.id)
+        print("After committing the session, show names")
+        print("Hero 1 name:", hero_1.name)
+        print("Hero 2 name:", hero_2.name)
+        print("Hero 3 name:", hero_3.name)
+        
+        # Remember here_1 (ect.) returned empty after the commit above. Below the session will make the engine communicate with the database to get the recent data for this object hero_1 (etc.), and then the session puts the data in the hero_1 object and marks it as "fresh" or "not expired".
+        session.refresh(hero_1)
+        session.refresh(hero_2)
+        session.refresh(hero_3)
+        print("After refreshing the heroes")
+        print("Hero 1:", hero_1)
+        print("Hero 2:", hero_2)
+        print("Hero 3:", hero_3)
+        # This `refresh` could be useful, for example, if you are building a web API to create heroes. And once a hero is created with some data, you return it to the client. You wouldn't want to return an object that looks empty because the automatic magic to refresh the data was not triggered. In this case, after committing the object to the database with the session, you could refresh it, and then return it to the client. This would ensure that the object has its fresh data.
+    
+    # By finishing the with block, the Session is closed, including a rollback of any pending transaction that could have been there and was not committed.    
+    # You always need to close the session as it uses resources `session.close()`. HOWEVER here, using a with block, the session will be automatically created when starting the with block and assigned to the variable session, and it will be automatically closed (meaning `session.close()` not needed) after the with block is finished. And it will work even if there's an exception in the code. 
+    print("After the session closes")
+    print("Hero 1:", hero_1)
+    print("Hero 2:", hero_2)
+    print("Hero 3:", hero_3)    
+
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
     # If this was not in a function and we tried to import something from this module (from this file) in another, it would try to create the database and table every time we executed that other file that imported this module.
 
-if __name__ == "__main__":
+def main():
     create_db_and_tables()
+    create_heroes()
+
+if __name__ == "__main__":
+    main()
