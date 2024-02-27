@@ -20,6 +20,9 @@ A learning project for database management and ORM best practices using SQLModel
 ### Database Operations
 - **Engine Configuration**: Learned to use a single SQLite database engine object and re-use it everywhere to provide with good performance and safe database interactions.
 - **Session Management**: Implemented the use of context managers (originally learned in an advanced Python course) for handling database sessions so that transactions are correctly committed or rolled back.
+- **SQL Indexes**: Learned how indexes use Binary Search Algoriths to speed up queries on databases. The key is knowing when to use indexes and their tradeoffs. More indexes means slower insert, update, and delete operations due to added steps for updating the index. 
+    - Use indexes on columns in large tables when frequently querying, ordering, or grouping. 
+    - Use indexes sparingly on columns in very small tables or in tables with a very high rate of insert, update, or delete operations. 
 
 ### CRUD Operations
 - **Data Insertion**: Learned how to add multiple entries to a database in a single transaction for efficient batch processing using an ORM.

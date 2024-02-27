@@ -8,9 +8,9 @@ from sqlmodel import Field, Session, SQLModel, col, create_engine, select
 # tell SQLModel that age is not required when validating data and that it has a default value of None. And we also tell it that, in the SQL database, the default value of age is NULL (the SQL equivalent to Python's None).
 class Hero(SQLModel, table=True): 
     id: Optional[int] = Field(default=None, primary_key=True) 
-    name: str
+    name: str = Field(index=True)
     secret_name: str
-    age: Optional[int] = None 
+    age: Optional[int] = Field(default=None, index=True) 
 
 
 sqlite_file_name = "database.db"
