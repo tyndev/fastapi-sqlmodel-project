@@ -97,7 +97,12 @@ def select_heros():
     with Session(engine) as session:
         # Your editor will give you autocompletion for both SQLModel's session.exec() and SQLAlchemy's session.execute(). Remember to always use session.exec() to get the best editor support and developer experience.
         heroes = session.exec(select(Hero).where(col(Hero.age) >= 35, col(Hero.age) < 40)).all()
-        print(heroes)
+        print(f"all(): {heroes}")
+        hero = session.exec(select(Hero).where(col(Hero.age) >= 35, col(Hero.age) < 40)).first()
+        print(f"first(): {hero}")
+        # fist()
+        # one()
+        # get()- for compact primary key search        
         # hero = Hero(name="Deadpond", secret_name="Dive Wilson")
         # Above, the model class is Hero (capital H) and the instance is hero (lowercase h).
         # So now you have Hero.name and hero.name that look very similar, but are two different things:
@@ -109,7 +114,7 @@ def select_heros():
         
 def main():
     create_db_and_tables()
-    create_heroes()
+    # create_heroes()
     select_heros()
 
 if __name__ == "__main__":
