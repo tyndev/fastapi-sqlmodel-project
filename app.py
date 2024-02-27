@@ -102,8 +102,24 @@ def select_heros():
         print(f"first(): {hero}")
         # fist()
         # one()
-        # get()- for compact primary key search        
-        # hero = Hero(name="Deadpond", secret_name="Dive Wilson")
+        # session.get()- for compact primary key search        
+        statement = select(Hero).where(col(Hero.age) >= 35)
+        results = session.exec(statement)
+        heroes = results.all()
+        heroes = session.exec(select(Hero).where(col(Hero.age) >= 35)).all()
+        print(len(heroes))
+        print(f"all(): {list(map(lambda x: x.name, heroes))}")
+        statement = select(Hero).where(col(Hero.age) >= 35).limit(2).offset(0)
+        results = session.exec(statement)
+        heroes = results.all()
+        print(len(heroes))
+        print(f"limit(2).offset(0): {list(map(lambda x: x.name, heroes))}")
+        statement = select(Hero).where(col(Hero.age) >= 35).limit(2).offset(2)
+        results = session.exec(statement)
+        heroes = results.all()
+        print(len(heroes))
+        print(f"limit(2).offset(2): {list(map(lambda x: x.name, heroes))}")
+        # hero = Hero(name="Deadpond", secret_name="Dive Wilson")        
         # Above, the model class is Hero (capital H) and the instance is hero (lowercase h).
         # So now you have Hero.name and hero.name that look very similar, but are two different things:
         # >>> Hero.name == "Deadpond"
