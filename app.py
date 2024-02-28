@@ -120,18 +120,33 @@ def select_heros():
         print(len(heroes))
         print(f"limit(2).offset(2): {list(map(lambda x: x.name, heroes))}")
         # hero = Hero(name="Deadpond", secret_name="Dive Wilson")        
-        # Above, the model class is Hero (capital H) and the instance is hero (lowercase h).
+        # Above, the model/class is Hero (capital H) and the object/instance is hero (lowercase h).
         # So now you have Hero.name and hero.name that look very similar, but are two different things:
         # >>> Hero.name == "Deadpond"
         # <sqlalchemy.sql.elements.BinaryExpression object at 0x7f4aec0d6c90>
         # >>> hero.name == "Deadpond"
         # True or False
         # Without col() above, you get a type error b/c Hero.age is potentially None, and you cannot compare None with an operqator like `>=`. This is because as we are using pure and plain Python annotations for the fields, age is indeed annotated as Optional[int], which means int or None. To fix this we can tell the editor that this class attribute is actually a special SQLModel column (instead of an instance attribute with a normal value).
-        
+
+def update_heroes():
+    with Session(engine) as session:
+        statement = select(Hero).where(Hero.name == "Spider-Boy")
+        results = session.exec(statement)
+        hero = results.one()
+        print("Hero>>>", hero)
+
+        hero.age = 16
+        print("Hero>>>", hero)
+        session.add(hero)
+        session.commit()
+        print("EMPTY>>>", hero) # will be empty, reminder that hero instance needs refresh after commit
+        print("Does this refresh?", hero.name) # showing here that calling an attribute refreshes the whole object.
+        print("Updated hero?>>>", hero)
+
 def main():
     create_db_and_tables()
-    # create_heroes()
+    create_heroes()
     select_heros()
-
+    update_heroes()
 if __name__ == "__main__":
     main()
