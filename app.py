@@ -143,6 +143,15 @@ def select_heros():
         # >>> hero.name == "Deadpond"
         # True or False
         # Without col() above, you get a type error b/c Hero.age is potentially None, and you cannot compare None with an operqator like `>=`. This is because as we are using pure and plain Python annotations for the fields, age is indeed annotated as Optional[int], which means int or None. To fix this we can tell the editor that this class attribute is actually a special SQLModel column (instead of an instance attribute with a normal value).
+        
+        # READ FROM LINKED TABLES---
+        # `isouter` ensures that heros without a team are also printed using SQL LEFT OUTER feature.
+        # Both Hero and Team are needed in select() because SQLAlchemy try to mimic SQL closely and we want to return data from both.
+        statement = select(Hero, Team).join(Team, isouter=True)
+        # statement = select(Hero)join(Team, isouter=True) # This leaves Team out of select. This still joins the tables (meaning we can filter heros by team) but only returns Hero data. 
+        results = session.exec(statement)
+        for hero, team in results:
+            print("Hero:", hero, "Team:", team)
 
 def update_heroes():
     with Session(engine) as session:
@@ -184,8 +193,8 @@ def main():
     create_db_and_tables()
     create_heroes()
     select_heros()
-    update_heroes()
-    delete_heroes()
+    # update_heroes()
+    # delete_heroes()
     
 if __name__ == "__main__":
     main()
