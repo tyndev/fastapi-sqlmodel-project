@@ -155,19 +155,25 @@ def select_heros():
 
 def update_heroes():
     with Session(engine) as session:
-        statement = select(Hero).where(Hero.name == "Spider-Boy")
+        statement = select(Hero, Team).join(Team, isouter=True).where(Hero.name == "Spider-Boy")
         results = session.exec(statement)
-        hero = results.one()
-        print("Hero>>>", hero)
-
+        hero, team = results.one()
+        
         hero.age = 16
         hero.name = "Spider-Youngster"
+        hero.team_id = 1
         print("Hero>>>", hero)
         session.add(hero)
         session.commit()
         print("EMPTY>>>", hero) # will be empty, reminder that hero instance needs refresh after commit
         print("Does this refresh?", hero.name) # showing here that calling an attribute refreshes the whole object.
         print("Updated hero?>>>", hero)
+        
+        statement = select(Hero, Team).join(Team, isouter=True).where(Hero.name == "Spider-Youngster")
+        results = session.exec(statement)
+        hero, team = results.one()
+        print("Team>>>", team)
+        # print("Team>>>", team.name)
 
 def delete_heroes():
     with Session(engine) as session:
@@ -193,7 +199,7 @@ def main():
     create_db_and_tables()
     create_heroes()
     select_heros()
-    # update_heroes()
+    update_heroes()
     # delete_heroes()
     
 if __name__ == "__main__":
