@@ -1,6 +1,6 @@
 from typing import Optional
 
-from sqlmodel import Field, Session, SQLModel, col, create_engine, select
+from sqlmodel import Field, Relationship, Session, SQLModel, col, create_engine, select
 
 # This class Hero represents the table for our heroes. And each instance we create later will represent a row in the table.
 # the config table=True tells SQLModel that this is a table model, aka it represents a table.
@@ -12,13 +12,17 @@ class Team(SQLModel, table=True): # I believe table name defaults to model name 
     name: str = Field(index=True)
     headquarters: str
     
+    heroes: list["Hero"] = Relationship(back_populates="team")
+    
 class Hero(SQLModel, table=True): 
     id: Optional[int] = Field(default=None, primary_key=True) 
     name: str = Field(index=True)
     secret_name: str
     age: Optional[int] = Field(default=None, index=True) 
 
-    team_id: Optional[int] = Field(default=None, foreign_key="team.id") # note that the `team` in foreign_key is the table name, not the model Team (capical T).
+    team_id: Optional[int] = Field(default=None, foreign_key="team.id")
+    team: Optional["Team"] = Relationship(back_populates="heroes")
+    # team_id: Optional[int] = Field(default=None, foreign_key="team.id" ) # note that the `team` in foreign_key is the table name, not the model Team (capical T).
 
 sqlite_file_name = "database.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}" 
@@ -41,14 +45,14 @@ def create_heroes():
 
         team_preventers = Team(name="Preventers", headquarters="Sharp Tower")
         team_z_force = Team(name="Z-Force", headquarters="Sister Margaret's Bar")
-
-        session.add(team_preventers)
-        session.add(team_z_force)
-        session.commit()
+        # BELOW NO LONGER NEEDED WHEN USING RELATIONSHIP ATTRIBUTES
+        # session.add(team_preventers)
+        # session.add(team_z_force)
+        # session.commit()
     
-        hero_1 = Hero(name="Deadpond", secret_name="Dive Wilson", team_id=team_z_force.id)
+        hero_1 = Hero(name="Deadpond", secret_name="Dive Wilson", team=team_z_force)
         hero_2 = Hero(name="Spider-Boy", secret_name="Pedro Parqueador")
-        hero_3 = Hero(name="Rusty-Man", secret_name="Tommy Sharp", age=48, team_id=team_preventers.id)
+        hero_3 = Hero(name="Rusty-Man", secret_name="Tommy Sharp", age=48, team=team_preventers)
         hero_4 = Hero(name="Tarantula", secret_name="Natalia Roman-on", age=32)
         hero_5 = Hero(name="Black Lion", secret_name="Trevor Challa", age=35)
         hero_6 = Hero(name="Dr. Weird", secret_name="Steve Weird", age=36)
@@ -99,6 +103,23 @@ def create_heroes():
         print("Hero 1:", hero_1)
         print("Hero 2:", hero_2)
         print("Hero 3:", hero_3)
+        
+        
+        hero_2.team = team_preventers
+        session.add(hero_2)
+        session.commit()
+        session.refresh(hero_2)
+        print("Updated hero:", hero_2)
+
+        team_amerisquad = Team(
+            name="Amerisquad", 
+            headquarters="DC",
+            heroes=[hero_6, hero_7]
+            )
+        session.add(team_amerisquad)
+        session.commit()
+        session.refresh(team_amerisquad)
+        print("Team Amerisquad:", team_amerisquad.heroes)
         # This `refresh` could be useful, for example, if you are building a web API to create heroes. And once a hero is created with some data, you return it to the client. You wouldn't want to return an object that looks empty because the automatic magic to refresh the data was not triggered. In this case, after committing the object to the database with the session, you could refresh it, and then return it to the client. This would ensure that the object has its fresh data.
     
     # By finishing the with block, the Session is closed, including a rollback of any pending transaction that could have been there and was not committed.    
@@ -147,33 +168,33 @@ def select_heros():
         # READ FROM LINKED TABLES---
         # `isouter` ensures that heros without a team are also printed using SQL LEFT OUTER feature.
         # Both Hero and Team are needed in select() because SQLAlchemy try to mimic SQL closely and we want to return data from both.
-        statement = select(Hero, Team).join(Team, isouter=True)
-        # statement = select(Hero)join(Team, isouter=True) # This leaves Team out of select. This still joins the tables (meaning we can filter heros by team) but only returns Hero data. 
-        results = session.exec(statement)
-        for hero, team in results:
-            print("Hero:", hero, "Team:", team)
+        # statement = select(Hero, Team).join(Team, isouter=True)
+        # # statement = select(Hero)join(Team, isouter=True) # This leaves Team out of select. This still joins the tables (meaning we can filter heros by team) but only returns Hero data. 
+        # results = session.exec(statement)
+        # for hero, team in results:
+        #     print("Hero:", hero, "Team:", team)
 
-def update_heroes():
-    with Session(engine) as session:
-        statement = select(Hero, Team).join(Team, isouter=True).where(Hero.name == "Spider-Boy")
-        results = session.exec(statement)
-        hero, team = results.one()
+# def update_heroes():
+#     with Session(engine) as session:
+#         statement = select(Hero, Team).join(Team, isouter=True).where(Hero.name == "Spider-Boy")
+#         results = session.exec(statement)
+#         hero, team = results.one()
         
-        hero.age = 16
-        hero.name = "Spider-Youngster"
-        hero.team_id = 1
-        print("Hero>>>", hero)
-        session.add(hero)
-        session.commit()
-        print("EMPTY>>>", hero) # will be empty, reminder that hero instance needs refresh after commit
-        print("Does this refresh?", hero.name) # showing here that calling an attribute refreshes the whole object.
-        print("Updated hero?>>>", hero)
+#         hero.age = 16
+#         hero.name = "Spider-Youngster"
+#         hero.team_id = 1
+#         print("Hero>>>", hero)
+#         session.add(hero)
+#         session.commit()
+#         print("EMPTY>>>", hero) # will be empty, reminder that hero instance needs refresh after commit
+#         print("Does this refresh?", hero.name) # showing here that calling an attribute refreshes the whole object.
+#         print("Updated hero?>>>", hero)
         
-        statement = select(Hero, Team).join(Team, isouter=True).where(Hero.name == "Spider-Youngster")
-        results = session.exec(statement)
-        hero, team = results.one()
-        print("Team>>>", team)
-        # print("Team>>>", team.name)
+#         statement = select(Hero, Team).join(Team, isouter=True).where(Hero.name == "Spider-Youngster")
+#         results = session.exec(statement)
+#         hero, team = results.one()
+#         print("Team>>>", team)
+#         # print("Team>>>", team.name)
 
 def delete_heroes():
     with Session(engine) as session:
@@ -199,7 +220,7 @@ def main():
     create_db_and_tables()
     create_heroes()
     select_heros()
-    update_heroes()
+    # update_heroes()
     # delete_heroes()
     
 if __name__ == "__main__":
