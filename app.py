@@ -120,6 +120,16 @@ def create_heroes():
         session.commit()
         session.refresh(team_amerisquad)
         print("Team Amerisquad:", team_amerisquad.heroes)
+        
+        print("\nHERE IS THE TEST\n--------------------------------")
+        print("BEFOR APPEND:", [hero.name for hero in team_preventers.heroes], "\n")
+        team_preventers.heroes.append(hero_4)
+        print("AFTER APPEND:", [hero.name for hero in team_preventers.heroes], "\n")
+        session.add(team_preventers)
+        session.commit()
+        print("AFTER COMMIT:", [hero.name for hero in team_preventers.heroes], "\n")
+        session.refresh(team_preventers)
+        print("AFTER REFRESH:", [hero.name for hero in team_preventers.heroes], "\n")
         # This `refresh` could be useful, for example, if you are building a web API to create heroes. And once a hero is created with some data, you return it to the client. You wouldn't want to return an object that looks empty because the automatic magic to refresh the data was not triggered. In this case, after committing the object to the database with the session, you could refresh it, and then return it to the client. This would ensure that the object has its fresh data.
     
     # By finishing the with block, the Session is closed, including a rollback of any pending transaction that could have been there and was not committed.    
