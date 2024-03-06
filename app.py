@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import FastAPI
 from sqlmodel import Field, Session, SQLModel, create_engine, select
@@ -6,8 +6,8 @@ from sqlmodel import Field, Session, SQLModel, create_engine, select
 
 # Define models with relationships for a simple ORM setup using SQLModel
 #   This is an SQLModel class that represents both the database model and the schema for API requests/responses.   
-#   FastAPI and SQLModel leverage Pydantic for type validation and SQLAlchemy for database operations, 
-#   reducing code duplication between the database models and the API data models
+#   It serves both as Pydantic models (for type validation and serialization) and SQLAlchemy models (for database ORM), 
+#   it simplifies the codebase by eliminating the need to define separate models for the database and API schemas.
 class Hero(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(index=True)
@@ -36,7 +36,7 @@ def on_startup():
     create_db_and_tables()
 
 # Define endpoint to create a new hero via POST request
-@app.post("/heroes/")
+@app.post("/heroes/", response_model=Hero)
 def create_hero(hero: Hero):
     with Session(engine) as session:
         session.add(hero)
@@ -45,7 +45,7 @@ def create_hero(hero: Hero):
         return hero
 
 
-@app.get("/heroes/")
+@app.get("/heroes/", response_model=List[Hero])
 def read_heroes():
     with Session(engine) as session:
         heroes = session.exec(select(Hero)).all()
