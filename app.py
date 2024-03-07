@@ -65,8 +65,8 @@ def create_hero(hero: HeroCreate):
         session.refresh(db_hero)
         return db_hero
 
-
-@app.get("/heroes/", response_model=List[Hero])
+# Define endpoint to read heroes via GET request
+@app.get("/heroes/", response_model=List[HeroRead])
 def read_heroes():
     with Session(engine) as session:
         heroes = session.exec(select(Hero)).all()
