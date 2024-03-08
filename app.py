@@ -18,12 +18,12 @@ class HeroBase(SQLModel):
 # Pydantic models (for type validation and serialization) and SQLAlchemy models (for database ORM)
 class Hero(HeroBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-
+    hashed_password: str = Field()
 # API MODELS ----------------------------------
 # Model that defines what client needs to send to our API, (only a Pydantic model)
 # Could just use the base model, but docs would say HeroBase, & HeroCreate is more client friendly
 class HeroCreate(HeroBase): 
-    pass 
+    password: str
 
 # Model that defines what client can expect to receive from our API, (only a Pydantic model)
 # ID will be created when pulling from database, so this is required
@@ -36,7 +36,7 @@ class HeroUpdate(SQLModel):
     name: Optional[str] = None
     secret_name: Optional[str] = None
     age: Optional[int] = None
-
+    password: Optional[str] = None
 
 # Setup database connection
 sqlite_file_name = "database.db"
@@ -47,6 +47,11 @@ engine = create_engine(sqlite_url, echo=True, connect_args=connect_args)
 # Function to create database and tables based on SQLModel definitions
 def create_db_and_tables_sync():
     SQLModel.metadata.create_all(engine)
+
+# Function to create a fake hashed password for testing
+def hash_password(password: str) -> str:
+    # use something like passlib here
+    return f"not actually hashed {password}"
 
 # Async version of the above function
 async def create_db_and_tables():
@@ -68,8 +73,10 @@ app = FastAPI(lifespan=lifespan)
 # Define endpoint to create a new hero via POST request
 @app.post("/heroes/", response_model=HeroRead)
 def create_hero(hero: HeroCreate):
+    hashed_password = hash_password(hero.password)
     with Session(engine) as session:
-        db_hero = Hero.model_validate(hero) # validates client request against data model
+        extra_data = {"hashed_password": hashed_password}
+        db_hero = Hero.model_validate(hero, update=extra_data) # validates client request against data model and adds extra data like hashed password
         session.add(db_hero)
         session.commit()
         session.refresh(db_hero)
@@ -100,7 +107,12 @@ def update_hero(hero_id: int, hero: HeroUpdate):
         if not db_hero:
             raise HTTPException(status_code=404, detail="Hero not found")
         hero_data = hero.model_dump(exclude_unset=True) # exclude defaul `None`s if any
-        db_hero.sqlmodel_update(hero_data)
+        extra_data = {}
+        if "password" in hero_data:
+            password = hero_data["password"]
+            hashed_password = hash_password(password)
+            extra_data["hashed_password"] = hashed_password
+        db_hero.sqlmodel_update(hero_data, update=extra_data)
         session.add(db_hero)
         session.commit()
         session.refresh(db_hero)
