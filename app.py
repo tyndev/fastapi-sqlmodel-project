@@ -1,12 +1,13 @@
 import asyncio
 from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 from contextlib import asynccontextmanager
 
 
 # BASE MODEL --------------------------------------------------
+# Model that is used for inheritance of common or shared fields
 class HeroBase(SQLModel):
     name: str = Field(index=True)
     secret_name: str
@@ -20,12 +21,21 @@ class Hero(HeroBase, table=True):
 
 # API MODELS ----------------------------------
 # Model that defines what client needs to send to our API, (only a Pydantic model)
+# Could just use the base model, but docs would say HeroBase, & HeroCreate is more client friendly
 class HeroCreate(HeroBase): 
-    pass # Could just use the base model, but docs would say HeroBase, & HeroCreate is more client friendly
+    pass 
 
 # Model that defines what client can expect to receive from our API, (only a Pydantic model)
+# ID will be created when pulling from database, so this is required
 class HeroRead(HeroBase):
-    id: int # ID will be created when pulling from database, so this is required
+    id: int 
+
+# Model for optional updates accounting for potential partial hero data modifications
+# Because all fields are options, this model can not inheret from HeroBase
+class HeroUpdate(SQLModel):
+    name: Optional[str] = None
+    secret_name: Optional[str] = None
+    age: Optional[int] = None
 
 
 # Setup database connection
@@ -67,9 +77,9 @@ def create_hero(hero: HeroCreate):
 
 # Define endpoint to read heroes via GET request
 @app.get("/heroes/", response_model=List[HeroRead])
-def read_heroes():
+def read_heroes(offset: int = 0, limit: int = Query(default=100, le=100)):
     with Session(engine) as session:
-        heroes = session.exec(select(Hero)).all()
+        heroes = session.exec(select(Hero).offset(offset).limit(limit)).all()     
         return heroes
     
     
@@ -81,4 +91,17 @@ def read_hero(hero_id: int):
         if not hero:
             raise HTTPException(status_code=404, detail="Hero not found")
         return hero
-    
+
+# Define endpoint to update a hero by ID, handling partial updates
+@app.patch("/heroes/{hero_id}", response_model=HeroRead)
+def update_hero(hero_id: int, hero: HeroUpdate):
+    with Session(engine) as session:
+        db_hero = session.get(Hero, hero_id)
+        if not db_hero:
+            raise HTTPException(status_code=404, detail="Hero not found")
+        hero_data = hero.model_dump(exclude_unset=True) # exclude defaul `None`s if any
+        db_hero.sqlmodel_update(hero_data)
+        session.add(db_hero)
+        session.commit()
+        session.refresh(db_hero)
+        return db_hero
