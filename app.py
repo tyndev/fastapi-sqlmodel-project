@@ -5,27 +5,27 @@ from fastapi import FastAPI
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 from contextlib import asynccontextmanager
 
-# DATA MODELS ----------------------------------
-# Model that represents a table in the database, (both a Pydantic model, and a SQLAlchemy model)
-# Pydantic models (for type validation and serialization) and SQLAlchemy models (for database ORM)
-class Hero(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
+
+# BASE MODEL --------------------------------------------------
+class HeroBase(SQLModel):
     name: str = Field(index=True)
     secret_name: str
     age: Optional[int] = Field(default=None, index=True)
+    
+# DATA MODELS ----------------------------------
+# Model that represents a table in the database, (both a Pydantic model, and a SQLAlchemy model)
+# Pydantic models (for type validation and serialization) and SQLAlchemy models (for database ORM)
+class Hero(HeroBase, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
 
 # API MODELS ----------------------------------
 # Model that defines what client needs to send to our API, (only a Pydantic model)
-class HeroCreate(SQLModel): 
-    name: str
-    secret_name: str
-    age: Optional[int] = None
+class HeroCreate(HeroBase): 
+    pass # Could just use the base model, but docs would say HeroBase, & HeroCreate is more client friendly
+
 # Model that defines what client can expect to receive from our API, (only a Pydantic model)
-class HeroRead(SQLModel):
-    id: int
-    name: str
-    secret_name: str
-    age: Optional[int] = None
+class HeroRead(HeroBase):
+    id: int # ID will be created when pulling from database, so this is required
 
 
 # Setup database connection
