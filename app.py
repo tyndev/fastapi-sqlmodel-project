@@ -1,7 +1,7 @@
 import asyncio
 from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 from contextlib import asynccontextmanager
 
@@ -53,6 +53,10 @@ def hash_password(password: str) -> str:
     # use something like passlib here
     return f"not actually hashed {password}"
 
+def get_session():
+    with Session(engine) as session:
+        yield session
+
 # Async version of the above function
 async def create_db_and_tables():
     loop = asyncio.get_running_loop()
@@ -72,48 +76,54 @@ app = FastAPI(lifespan=lifespan)
 
 # Define endpoint to create a new hero via POST request
 @app.post("/heroes/", response_model=HeroRead)
-def create_hero(hero: HeroCreate):
+def create_hero(*, session: Session = Depends(get_session), hero: HeroCreate):
     hashed_password = hash_password(hero.password)
-    with Session(engine) as session:
-        extra_data = {"hashed_password": hashed_password}
-        db_hero = Hero.model_validate(hero, update=extra_data) # validates client request against data model and adds extra data like hashed password
-        session.add(db_hero)
-        session.commit()
-        session.refresh(db_hero)
-        return db_hero
+    extra_data = {"hashed_password": hashed_password}
+    db_hero = Hero.model_validate(hero, update=extra_data) # validates client request against data model and adds extra data like hashed password
+    session.add(db_hero)
+    session.commit()
+    session.refresh(db_hero)
+    return db_hero
 
 # Define endpoint to read heroes via GET request
 @app.get("/heroes/", response_model=List[HeroRead])
-def read_heroes(offset: int = 0, limit: int = Query(default=100, le=100)):
-    with Session(engine) as session:
-        heroes = session.exec(select(Hero).offset(offset).limit(limit)).all()     
-        return heroes
+def read_heroes(*, session: Session = Depends(get_session), offset: int = 0, limit: int = Query(default=100, le=100)):
+    heroes = session.exec(select(Hero).offset(offset).limit(limit)).all()     
+    return heroes
     
     
 # Define endpoint to read one hero via GET request
 @app.get("/heroes/{hero_id}", response_model=HeroRead)
-def read_hero(hero_id: int):
-    with Session(engine) as session:
-        hero = session.get(Hero, hero_id)
-        if not hero:
-            raise HTTPException(status_code=404, detail="Hero not found")
-        return hero
+def read_hero(*, session: Session = Depends(get_session), hero_id: int):
+    hero = session.get(Hero, hero_id)
+    if not hero:
+        raise HTTPException(status_code=404, detail="Hero not found")
+    return hero
 
 # Define endpoint to update a hero by ID, handling partial updates
 @app.patch("/heroes/{hero_id}", response_model=HeroRead)
-def update_hero(hero_id: int, hero: HeroUpdate):
-    with Session(engine) as session:
-        db_hero = session.get(Hero, hero_id)
-        if not db_hero:
-            raise HTTPException(status_code=404, detail="Hero not found")
-        hero_data = hero.model_dump(exclude_unset=True) # exclude defaul `None`s if any
-        extra_data = {}
-        if "password" in hero_data:
-            password = hero_data["password"]
-            hashed_password = hash_password(password)
-            extra_data["hashed_password"] = hashed_password
-        db_hero.sqlmodel_update(hero_data, update=extra_data)
-        session.add(db_hero)
-        session.commit()
-        session.refresh(db_hero)
-        return db_hero
+def update_hero(*, session: Session = Depends(get_session), hero_id: int, hero: HeroUpdate):
+    db_hero = session.get(Hero, hero_id)
+    if not db_hero:
+        raise HTTPException(status_code=404, detail="Hero not found")
+    hero_data = hero.model_dump(exclude_unset=True) # exclude default `None`s if any
+    extra_data = {}
+    if "password" in hero_data:
+        password = hero_data["password"]
+        hashed_password = hash_password(password)
+        extra_data["hashed_password"] = hashed_password
+    db_hero.sqlmodel_update(hero_data, update=extra_data)
+    session.add(db_hero)
+    session.commit()
+    session.refresh(db_hero)
+    return db_hero
+
+# Define endpoint to delete a hero by ID
+@app.delete("/heroes/{hero_id}")
+def delete_hero(*, session: Session = Depends(get_session), hero_id: int):
+    db_hero = session.get(Hero, hero_id)
+    if not db_hero:
+        raise HTTPException(status_code=404, detail="Hero not found")
+    session.delete(db_hero)
+    session.commit()
+    return {"ok": True}
